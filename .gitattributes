@@ -1,0 +1,93 @@
+# =============================================================================
+# Unreal Engine 5 — .gitattributes
+#
+# LFS policy (per project decision):
+#   - Git LFS is used ONLY for level maps (*.umap).
+#   - All other binary assets (*.uasset, textures, audio, meshes, ...) are
+#     committed directly to git as regular binaries (marked -text so git does
+#     not attempt line-ending conversion or text diffs on them).
+#   - One unavoidable exception: any single file >100 MB MUST go through LFS,
+#     because GitHub hard-rejects non-LFS files above 100 MB. See the explicit
+#     path rule at the bottom of this file.
+# =============================================================================
+
+# --------------- Line-ending normalization (source / text files) ------------
+* text=auto
+
+*.cs        text eol=lf
+*.cpp       text eol=lf
+*.h         text eol=lf
+*.hpp       text eol=lf
+*.inl       text eol=lf
+*.c         text eol=lf
+*.ini       text eol=lf
+*.cfg       text eol=lf
+*.json      text eol=lf
+*.xml       text eol=lf
+*.txt       text eol=lf
+*.md        text eol=lf
+*.sh        text eol=lf
+*.uproject  text
+
+# --------------- Git LFS: ONLY level maps -----------------------------------
+*.umap      filter=lfs diff=lfs merge=lfs -text
+
+# --------------- Binary assets committed directly to git (NO LFS) -----------
+# Marked as binary so git skips eol conversion and text diffs.
+*.uasset            binary
+*.ushaderbytecode   binary
+*.upipelinecache    binary
+
+# 3D / mesh formats
+*.fbx       binary
+*.obj       binary
+*.ma        binary
+*.mb        binary
+*.blend     binary
+*.3ds       binary
+*.dae       binary
+*.abc       binary
+
+# Texture / image formats
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.tga       binary
+*.tif       binary
+*.tiff      binary
+*.bmp       binary
+*.dds       binary
+*.hdr       binary
+*.exr       binary
+*.psd       binary
+
+# Audio formats
+*.wav       binary
+*.mp3       binary
+*.ogg       binary
+*.flac      binary
+*.aif       binary
+*.aiff      binary
+
+# Video formats
+*.mp4       binary
+*.mov       binary
+*.avi       binary
+
+# Font files
+*.ttf       binary
+*.otf       binary
+*.woff      binary
+*.woff2     binary
+
+# Archives
+*.zip       binary
+*.7z        binary
+*.rar       binary
+*.tar       binary
+*.gz        binary
+
+# --------------- Mandatory LFS exceptions: files >100 MB --------------------
+# GitHub rejects any non-LFS file larger than 100 MB. These specific oversized
+# assets are forced through LFS regardless of the "no LFS for assets" policy.
+Content/Effects/Textures/Flipbooks/SmokeSwirl_3_Flipbook_CHANNELPACK.uasset filter=lfs diff=lfs merge=lfs -text
