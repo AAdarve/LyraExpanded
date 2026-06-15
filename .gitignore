@@ -68,3 +68,13 @@ compile_commands.json
 
 # ----- IncrediBuild / Fastbuild ----------------------------------------------
 *.bff.log
+
+# ----- Claude Code (AI assistant config & state) ----------------------------
+# All Claude Code files, folders and configuration — kept local, never tracked
+.claude/
+.claude/**
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+.mcp.json
+.anthropic/
