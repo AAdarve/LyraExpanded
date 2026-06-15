@@ -16,7 +16,7 @@
 	"IsExperimentalVersion": false,
 	"Installed": false,
 	"ExplicitlyLoaded": true,
-	"BuiltInInitialFeatureState": "Active",
+	"BuiltInInitialFeatureState": "Registered",
 	"Plugins": [
 		{
 			"Name": "ShooterCore",
