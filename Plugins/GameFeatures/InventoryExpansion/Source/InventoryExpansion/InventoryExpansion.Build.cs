@@ -13,6 +13,7 @@ public class InventoryExpansion : ModuleRules
 			{
 				"Core",
 				"NarrativeInventory",
+				"NarrativeEquipment",
 				"LyraGame",
 			}
 			);
