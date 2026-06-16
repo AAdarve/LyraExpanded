@@ -373,13 +373,11 @@
 		},
 		{
 			"Name": "NarrativeInventory",
-			"Enabled": true,
-			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/46d407c1917d4575bfc2a8bb1cb5185d"
+			"Enabled": true
 		},
 		{
 			"Name": "NarrativeCommonUI",
-			"Enabled": true,
-			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/f1adaffd049b44cca254832b2beeb1b7"
+			"Enabled": true
 		}
 	],
 	"EpicSampleNameHash": "451731683"
