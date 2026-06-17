@@ -65,6 +65,13 @@
 		{
 			"Name": "CommonUI",
 			"Enabled": true
+		},
+		{
+			"Name": "ShooterCore",
+			"Enabled": true
 		}
-	]
+	],
+	"MarketplaceURL": "",
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false
 }
