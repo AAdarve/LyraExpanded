@@ -15,6 +15,10 @@ public class InventoryExpansion : ModuleRules
 				"NarrativeInventory",
 				"NarrativeEquipment",
 				"LyraGame",
+				// Public because our component headers inherit IGameFrameworkInitStateInterface
+				// and expose FGameplayTag / UGameFrameworkComponentManager in their signatures.
+				"GameplayTags",
+				"ModularGameplay",
 			}
 			);
 
@@ -23,10 +27,8 @@ public class InventoryExpansion : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
-				"GameplayTags",
 				"GameplayAbilities",
 				"GameplayMessageRuntime",
-				"ModularGameplay",
 			}
 			);
 	}
