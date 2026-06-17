@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "Components/PawnComponent.h"
+#include "Components/ControllerComponent.h"
 
 #include "VisualInventoryComponent.generated.h"
 
@@ -47,18 +47,20 @@ struct FVisualInventoryItem
 };
 
 /**
- * Pawn component that produces a single, UI-ready view of the pawn's Lyra inventory + equipment.
+ * Controller component that produces a single, UI-ready view of the player's Lyra inventory + equipment.
+ *
+ * Lives on the controller (alongside ULyraInventoryManagerComponent), so it survives pawn re-possession.
  *
  * Lyra is the source of truth. This component owns no state of its own and replicates nothing:
- * it reads the pawn's ULyraInventoryManagerComponent and ULyraEquipmentManagerComponent on demand,
- * pulls the UInventoryFragment_ItemDisplay off each item, marks equipped items, and returns a finished
- * list. The widgets call GetDisplayItems() when they need data and never touch the managers directly.
+ * it reads the controller's ULyraInventoryManagerComponent and the possessed pawn's ULyraEquipmentManagerComponent
+ * on demand, pulls the UInventoryFragment_ItemDisplay off each item, marks equipped items, and returns a
+ * finished list. The widgets call GetDisplayItems() when they need data and never touch the managers directly.
  *
  * PULL-ONLY: nothing here subscribes to messages, binds delegates, or ticks. Every call recomputes
  * fresh from current Lyra state.
  */
 UCLASS(Blueprintable, ClassGroup = (Inventory), meta = (BlueprintSpawnableComponent))
-class INVENTORYEXPANSION_API UVisualInventoryComponent : public UPawnComponent
+class INVENTORYEXPANSION_API UVisualInventoryComponent : public UControllerComponent
 {
 	GENERATED_BODY()
 
@@ -90,7 +92,7 @@ public:
 	static bool IsStackFull(const FVisualInventoryItem& Item);
 
 private:
-	/** Resolves both Lyra managers from the owning pawn. Returns false if either is missing. */
+	/** Resolves the inventory manager from the controller and the equipment manager from the pawn. Returns false if either is missing. */
 	bool ResolveManagers(ULyraInventoryManagerComponent*& OutInventory, ULyraEquipmentManagerComponent*& OutEquipment) const;
 
 	/** Maps each currently-equipped inventory item instance to the equipment instance backing it. */

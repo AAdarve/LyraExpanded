@@ -121,7 +121,7 @@ void UInventoryExpansionComponent::CheckDefaultInitialization()
 
 void UInventoryExpansionComponent::OnPawnGameplayReady_Implementation()
 {
-	// TODO (Phase 3): Read the pawn's Lyra inventory (ULyraInventoryManagerComponent),
+	// TODO (Phase 3): Read the controller's Lyra inventory (ULyraInventoryManagerComponent),
 	// resolve each item's UInventoryFragment_NarrativeItem::NarrativeItemClass and feed it
 	// into this Narrative inventory via TryAddItemFromClass(). Left empty so the derived
 	// Blueprint can implement the mirror for now.

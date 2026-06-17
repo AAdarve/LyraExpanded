@@ -5,6 +5,7 @@
 #include "InventoryFragment_ItemDisplay.h"
 #include "LyraLogChannels.h"
 
+#include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
 #include "UObject/UnrealType.h"
 
@@ -107,14 +108,22 @@ bool UVisualInventoryComponent::ResolveManagers(ULyraInventoryManagerComponent*&
 	OutInventory = nullptr;
 	OutEquipment = nullptr;
 
-	APawn* OwnerPawn = GetPawn<APawn>();
-	if (!OwnerPawn)
+	// This component lives on the controller. The inventory manager is a sibling controller component
+	// (inventory is a property of the player, so it survives pawn re-possession). The equipment manager
+	// lives on the possessed pawn, since equipment is spawned/attached to the physical body.
+	const AController* OwnerController = GetController<AController>();
+	if (!OwnerController)
 	{
 		return false;
 	}
 
-	OutInventory = OwnerPawn->FindComponentByClass<ULyraInventoryManagerComponent>();
-	OutEquipment = OwnerPawn->FindComponentByClass<ULyraEquipmentManagerComponent>();
+	OutInventory = OwnerController->FindComponentByClass<ULyraInventoryManagerComponent>();
+
+	if (const APawn* OwnerPawn = GetPawn<APawn>())
+	{
+		OutEquipment = OwnerPawn->FindComponentByClass<ULyraEquipmentManagerComponent>();
+	}
+
 	return (OutInventory != nullptr) && (OutEquipment != nullptr);
 }
 
