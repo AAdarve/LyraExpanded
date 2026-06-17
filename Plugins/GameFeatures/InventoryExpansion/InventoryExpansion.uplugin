@@ -32,14 +32,6 @@
 		{
 			"Name": "LyraExampleContent",
 			"Enabled": true
-		},
-		{
-			"Name": "NarrativeInventory",
-			"Enabled": true
-		},
-		{
-			"Name": "NarrativeCommonUI",
-			"Enabled": true
 		}
 	]
 }
