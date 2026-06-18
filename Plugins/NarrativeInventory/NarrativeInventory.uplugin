@@ -67,14 +67,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "ShooterCore",
-			"Enabled": true
-		},
-		{
-			"Name": "InventoryExpansion",
-			"Enabled": true
-		},
-		{
 			"Name": "NarrativeCommonUI",
 			"Enabled": true
 		}
