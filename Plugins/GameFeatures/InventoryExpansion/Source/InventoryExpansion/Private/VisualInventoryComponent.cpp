@@ -2,11 +2,14 @@
 
 #include "VisualInventoryComponent.h"
 
+#include "InventoryExpansionGameplayTags.h"
 #include "InventoryFragment_ItemDisplay.h"
+#include "SlottedEquipmentManagerComponent.h"
 #include "LyraLogChannels.h"
 
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "UObject/UnrealType.h"
 
 #include "Inventory/LyraInventoryManagerComponent.h"
@@ -14,6 +17,7 @@
 #include "Inventory/LyraInventoryItemDefinition.h"
 #include "Equipment/LyraEquipmentManagerComponent.h"
 #include "Equipment/LyraEquipmentInstance.h"
+#include "Equipment/LyraQuickBarComponent.h"
 
 namespace
 {
@@ -49,6 +53,174 @@ namespace
 
 		return nullptr;
 	}
+
+	// Builds one UI row from a Lyra item plus the already-gathered runtime maps (equipped-state + stack counts).
+	// Shared by GetDisplayItems (inventory list) and GetQuickBarItems (weapon slots). Display may be null
+	// (e.g. a QuickBar weapon without a display fragment); the row still carries the live Instance.
+	FVisualInventoryItem MakeRow(
+		ULyraInventoryItemInstance* Instance,
+		const UInventoryFragment_ItemDisplay* Display,
+		const TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*>& EquippedMap,
+		const TMap<ULyraInventoryItemInstance*, int32>& CountMap)
+	{
+		FVisualInventoryItem Row;
+		Row.Instance = Instance;
+		Row.Display = const_cast<UInventoryFragment_ItemDisplay*>(Display);
+		if (Display)
+		{
+			Row.SlotTag = Display->EquipmentSlot;
+		}
+
+		const int32* Count = CountMap.Find(Instance);
+		Row.StackCount = Count ? *Count : 1;
+
+		if (ULyraEquipmentInstance* const* Equip = EquippedMap.Find(Instance))
+		{
+			Row.bEquipped = true;
+			Row.EquipmentInstance = *Equip;
+		}
+
+		return Row;
+	}
+}
+
+void UVisualInventoryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Listen (read-only) for body-slot equip/unequip so per-slot widgets can refresh without polling.
+	if (UWorld* World = GetWorld())
+	{
+		UGameplayMessageSubsystem& Messaging = UGameplayMessageSubsystem::Get(World);
+
+		SlotChangedListenerHandle = Messaging.RegisterListener(
+			InventoryExpansionTags::Equipment_Message_SlotChanged, this, &UVisualInventoryComponent::HandleSlotEquipmentChanged);
+
+		// Also listen to Lyra's QuickBar so weapon slots refresh through the same delegates. The channel tag
+		// is defined static (non-exported) in LyraQuickBarComponent.cpp, so resolve it by its stable name.
+		const FGameplayTag QuickBarChannel = FGameplayTag::RequestGameplayTag(FName("Lyra.QuickBar.Message.SlotsChanged"));
+		QuickBarSlotsListenerHandle = Messaging.RegisterListener(
+			QuickBarChannel, this, &UVisualInventoryComponent::HandleQuickBarSlotsChanged);
+	}
+}
+
+void UVisualInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// Unregister() resolves the subsystem from the handle's own weak pointer (safe during teardown).
+	if (SlotChangedListenerHandle.IsValid())
+	{
+		SlotChangedListenerHandle.Unregister();
+	}
+	if (QuickBarSlotsListenerHandle.IsValid())
+	{
+		QuickBarSlotsListenerHandle.Unregister();
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void UVisualInventoryComponent::HandleSlotEquipmentChanged(FGameplayTag Channel, const FSlottedEquipmentChangedMessage& Message)
+{
+	// The message bus is world-global, so ignore changes that belong to a different player's pawn.
+	if (Message.OwnerActor != GetPawn<APawn>())
+	{
+		return;
+	}
+
+	const FVisualInventoryItem Row = BuildRowForInstance(Message.Item);
+	if (Message.bEquipped)
+	{
+		OnItemEquippedToSlot.Broadcast(Message.SlotTag, Row);
+	}
+	else
+	{
+		OnItemUnequippedFromSlot.Broadcast(Message.SlotTag, Row);
+	}
+}
+
+void UVisualInventoryComponent::HandleQuickBarSlotsChanged(FGameplayTag Channel, const FLyraQuickBarSlotsChangedMessage& Message)
+{
+	// The QuickBar lives on the controller (like this component), so its message Owner is our controller.
+	if (Message.Owner != GetOwner())
+	{
+		return;
+	}
+
+	// Diff per index against the last-seen weapon slots. A slot whose occupant changed fires unequip for
+	// the old item and equip for the new one, each tagged with the matching Equipment.Slot.Weapon.N occupant.
+	const int32 Count = FMath::Max(KnownQuickBarSlots.Num(), Message.Slots.Num());
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		ULyraInventoryItemInstance* Old = KnownQuickBarSlots.IsValidIndex(Index) ? KnownQuickBarSlots[Index].Get() : nullptr;
+		ULyraInventoryItemInstance* New = Message.Slots.IsValidIndex(Index) ? Message.Slots[Index] : nullptr;
+		if (Old == New)
+		{
+			continue;
+		}
+
+		const FGameplayTag SlotTag = WeaponSlotTagForIndex(Index);
+		if (!SlotTag.IsValid())
+		{
+			continue; // QuickBar has more than the 3 mapped weapon slots; ignore the extras.
+		}
+
+		if (Old)
+		{
+			FVisualInventoryItem Row = BuildRowForInstance(Old);
+			Row.QuickBarSlotIndex = Index;
+			OnItemUnequippedFromSlot.Broadcast(SlotTag, Row);
+		}
+		if (New)
+		{
+			FVisualInventoryItem Row = BuildRowForInstance(New);
+			Row.QuickBarSlotIndex = Index;
+			OnItemEquippedToSlot.Broadcast(SlotTag, Row);
+		}
+	}
+
+	KnownQuickBarSlots = Message.Slots;
+}
+
+FGameplayTag UVisualInventoryComponent::WeaponSlotTagForIndex(int32 QuickBarIndex)
+{
+	switch (QuickBarIndex)
+	{
+	case 0: return InventoryExpansionTags::Equipment_Slot_Weapon_1;
+	case 1: return InventoryExpansionTags::Equipment_Slot_Weapon_2;
+	case 2: return InventoryExpansionTags::Equipment_Slot_Weapon_3;
+	default: return FGameplayTag();
+	}
+}
+
+int32 UVisualInventoryComponent::IndexForWeaponSlotTag(FGameplayTag WeaponSlotTag)
+{
+	if (WeaponSlotTag.MatchesTagExact(InventoryExpansionTags::Equipment_Slot_Weapon_1)) { return 0; }
+	if (WeaponSlotTag.MatchesTagExact(InventoryExpansionTags::Equipment_Slot_Weapon_2)) { return 1; }
+	if (WeaponSlotTag.MatchesTagExact(InventoryExpansionTags::Equipment_Slot_Weapon_3)) { return 2; }
+	return -1;
+}
+
+FVisualInventoryItem UVisualInventoryComponent::BuildRowForInstance(ULyraInventoryItemInstance* Instance) const
+{
+	if (!Instance)
+	{
+		return FVisualInventoryItem();
+	}
+
+	ULyraInventoryManagerComponent* Inventory = nullptr;
+	ULyraEquipmentManagerComponent* Equipment = nullptr;
+	if (!ResolveManagers(Inventory, Equipment))
+	{
+		return FVisualInventoryItem();
+	}
+
+	TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*> EquippedMap;
+	BuildEquippedMap(Equipment, EquippedMap);
+
+	TMap<ULyraInventoryItemInstance*, int32> CountMap;
+	BuildStackCountMap(Inventory, CountMap);
+
+	return MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, CountMap);
 }
 
 TArray<FVisualInventoryItem> UVisualInventoryComponent::GetDisplayItems() const
@@ -84,23 +256,106 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetDisplayItems() const
 			continue;
 		}
 
-		FVisualInventoryItem Row;
-		Row.Instance = Instance;
-		Row.Display = const_cast<UInventoryFragment_ItemDisplay*>(Display);
+		Results.Add(MakeRow(Instance, Display, EquippedMap, CountMap));
+	}
 
-		const int32* Count = CountMap.Find(Instance);
-		Row.StackCount = Count ? *Count : 1;
+	return Results;
+}
 
-		if (ULyraEquipmentInstance** Equip = EquippedMap.Find(Instance))
+FVisualInventoryItem UVisualInventoryComponent::GetEquippedItemForSlot(FGameplayTag InSlot) const
+{
+	if (!InSlot.IsValid())
+	{
+		return FVisualInventoryItem();
+	}
+
+	// Weapon occupant slots resolve against the QuickBar (the item in that index), so the same read path
+	// serves all paperdoll cells - 4 body + 3 weapon - keyed purely by occupant tag.
+	const int32 WeaponIndex = IndexForWeaponSlotTag(InSlot);
+	if (WeaponIndex != -1)
+	{
+		const AController* OwnerController = GetController<AController>();
+		ULyraQuickBarComponent* QuickBar = OwnerController ? OwnerController->FindComponentByClass<ULyraQuickBarComponent>() : nullptr;
+		if (!QuickBar)
 		{
-			Row.bEquipped = true;
-			Row.EquipmentInstance = *Equip;
+			return FVisualInventoryItem();
 		}
 
+		const TArray<ULyraInventoryItemInstance*> Slots = QuickBar->GetSlots();
+		ULyraInventoryItemInstance* Instance = Slots.IsValidIndex(WeaponIndex) ? Slots[WeaponIndex] : nullptr;
+		if (!Instance)
+		{
+			return FVisualInventoryItem(); // empty weapon slot
+		}
+
+		FVisualInventoryItem Row = BuildRowForInstance(Instance);
+		Row.QuickBarSlotIndex = WeaponIndex;
+		return Row;
+	}
+
+	// Body slots: exclusivity is guaranteed by USlottedEquipmentManagerComponent, so at most one row matches.
+	for (const FVisualInventoryItem& Row : GetDisplayItems())
+	{
+		if (Row.bEquipped && Row.SlotTag.MatchesTagExact(InSlot))
+		{
+			return Row;
+		}
+	}
+
+	return FVisualInventoryItem();
+}
+
+TArray<FVisualInventoryItem> UVisualInventoryComponent::GetQuickBarItems() const
+{
+	TArray<FVisualInventoryItem> Results;
+
+	ULyraInventoryManagerComponent* Inventory = nullptr;
+	ULyraEquipmentManagerComponent* Equipment = nullptr;
+	if (!ResolveManagers(Inventory, Equipment))
+	{
+		return Results;
+	}
+
+	const AController* OwnerController = GetController<AController>();
+	ULyraQuickBarComponent* QuickBar = OwnerController ? OwnerController->FindComponentByClass<ULyraQuickBarComponent>() : nullptr;
+	if (!QuickBar)
+	{
+		return Results;
+	}
+
+	TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*> EquippedMap;
+	BuildEquippedMap(Equipment, EquippedMap);
+
+	TMap<ULyraInventoryItemInstance*, int32> CountMap;
+	BuildStackCountMap(Inventory, CountMap);
+
+	const TArray<ULyraInventoryItemInstance*> Slots = QuickBar->GetSlots();
+	Results.Reserve(Slots.Num());
+	for (int32 Index = 0; Index < Slots.Num(); ++Index)
+	{
+		ULyraInventoryItemInstance* Instance = Slots[Index];
+		if (!Instance)
+		{
+			continue; // empty QuickBar slot
+		}
+
+		FVisualInventoryItem Row = MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, CountMap);
+		Row.QuickBarSlotIndex = Index;
 		Results.Add(Row);
 	}
 
 	return Results;
+}
+
+int32 UVisualInventoryComponent::GetActiveQuickBarIndex() const
+{
+	const AController* OwnerController = GetController<AController>();
+	if (const ULyraQuickBarComponent* QuickBar = OwnerController ? OwnerController->FindComponentByClass<ULyraQuickBarComponent>() : nullptr)
+	{
+		return QuickBar->GetActiveSlotIndex();
+	}
+
+	return -1;
 }
 
 bool UVisualInventoryComponent::ResolveManagers(ULyraInventoryManagerComponent*& OutInventory, ULyraEquipmentManagerComponent*& OutEquipment) const

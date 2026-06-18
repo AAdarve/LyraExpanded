@@ -19,6 +19,8 @@ public class InventoryExpansion : ModuleRules
 				// and expose FGameplayTag / UGameFrameworkComponentManager in their signatures.
 				"GameplayTags",
 				"ModularGameplay",
+				// Public because VisualInventoryComponent.h stores an FGameplayMessageListenerHandle by value.
+				"GameplayMessageRuntime",
 			}
 			);
 
@@ -28,7 +30,6 @@ public class InventoryExpansion : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"GameplayAbilities",
-				"GameplayMessageRuntime",
 			}
 			);
 	}

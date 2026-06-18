@@ -74,6 +74,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Display")
 	int32 BaseValue = 0;
 
+	// --- Equipment ---
+
+	// Body-equipment slot this item belongs to, if equippable (invalid/empty tag = not body-equippable,
+	// e.g. weapons handled by the QuickBar). Read by USlottedEquipmentManagerComponent (exact match) and
+	// surfaced to the UI via UVisualInventoryComponent::FVisualInventoryItem::SlotTag. Pick one of
+	// InventoryExpansionTags::Equipment_Slot_*.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment", meta = (Categories = "Equipment.Slot"))
+	FGameplayTag EquipmentSlot;
+
 	// --- Usage ---
 
 	// Whether using the item consumes it.
