@@ -13,6 +13,7 @@ class ULyraInventoryManagerComponent;
 class ULyraEquipmentInstance;
 class ULyraEquipmentManagerComponent;
 class ULyraQuickBarComponent;
+class ULyraPickupDefinition;
 class UInventoryFragment_ItemDisplay;
 struct FSlottedEquipmentChangedMessage;
 struct FLyraQuickBarSlotsChangedMessage;
@@ -54,6 +55,12 @@ struct FVisualInventoryItem
 	// Invalid/empty if the item is not body-equippable (e.g. weapons - see QuickBarSlotIndex).
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory|Display")
 	FGameplayTag SlotTag;
+
+	// Pickup data to spawn this item into the world on drop, mirrored from the display fragment.
+	// Soft: call .LoadSynchronous()/async-load before handing to the pickup-spawn BP. Empty if the
+	// item has no display fragment (e.g. QuickBar weapons) or none was authored.
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory|Display")
+	TSoftObjectPtr<ULyraPickupDefinition> PickupDefinition;
 
 	// QuickBar slot index this row occupies, or -1 if it is not in the QuickBar (only filled by GetQuickBarItems).
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory|Display")
@@ -151,6 +158,16 @@ public:
 	// Whether the stack is at its maximum size.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory|Display")
 	static bool IsStackFull(const FVisualInventoryItem& Item);
+
+	// --- Drop helper ---
+
+	// The pickup definition authored on an item's display fragment, returned as a soft ref so the
+	// caller (e.g. the drop ability) can async-load and spawn it. Lets the drop flow send only the
+	// item Instance through the gameplay-event payload and derive the pickup data on the ability side
+	// (the fragment type is not BlueprintType, so this avoids needing a Cast in Blueprint). Returns a
+	// null soft ptr if the item has no display fragment or none was authored.
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory|Display")
+	static TSoftObjectPtr<ULyraPickupDefinition> GetPickupDefinitionForItem(const ULyraInventoryItemInstance* Instance);
 
 private:
 	/** Resolves the inventory manager from the controller and the equipment manager from the pawn. Returns false if either is missing. */

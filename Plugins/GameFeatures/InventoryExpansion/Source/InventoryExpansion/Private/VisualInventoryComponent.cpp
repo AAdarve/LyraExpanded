@@ -18,6 +18,7 @@
 #include "Equipment/LyraEquipmentManagerComponent.h"
 #include "Equipment/LyraEquipmentInstance.h"
 #include "Equipment/LyraQuickBarComponent.h"
+#include "Equipment/LyraPickupDefinition.h"
 
 namespace
 {
@@ -70,6 +71,7 @@ namespace
 		if (Display)
 		{
 			Row.SlotTag = Display->EquipmentSlot;
+			Row.PickupDefinition = Display->PickupDefinition;
 		}
 
 		const int32* Count = CountMap.Find(Instance);
@@ -586,4 +588,14 @@ bool UVisualInventoryComponent::IsStackFull(const FVisualInventoryItem& Item)
 
 	const int32 EffectiveMax = Item.Display->bStackable ? Item.Display->MaxStackSize : 1;
 	return Item.StackCount >= EffectiveMax;
+}
+
+TSoftObjectPtr<ULyraPickupDefinition> UVisualInventoryComponent::GetPickupDefinitionForItem(const ULyraInventoryItemInstance* Instance)
+{
+	if (const UInventoryFragment_ItemDisplay* Display = FindDisplayFragment(Instance))
+	{
+		return Display->PickupDefinition;
+	}
+
+	return nullptr;
 }

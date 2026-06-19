@@ -4,11 +4,13 @@
 
 #include "Inventory/LyraInventoryItemDefinition.h"
 #include "GameplayTagContainer.h"
+#include "UObject/SoftObjectPtr.h"
 
 #include "InventoryFragment_ItemDisplay.generated.h"
 
 class UTexture2D;
 class USoundBase;
+class ULyraPickupDefinition;
 
 /**
  * A stat row shown in the item-preview panel. Decoupled local mirror of Narrative's
@@ -82,6 +84,14 @@ public:
 	// InventoryExpansionTags::Equipment_Slot_*.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment", meta = (Categories = "Equipment.Slot"))
 	FGameplayTag EquipmentSlot;
+
+	// --- Pickup / Drop ---
+
+	// Pickup data used to spawn this item back into the world on drop. Soft: resolved on demand
+	// (see UVisualInventoryComponent / drop BP), so the pickup mesh/sounds stay out of the item CDO.
+	// ULyraWeaponPickupDefinition (weapon variant) also assigns here since it derives from the base.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Pickup")
+	TSoftObjectPtr<ULyraPickupDefinition> PickupDefinition;
 
 	// --- Usage ---
 
