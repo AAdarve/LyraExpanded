@@ -3,7 +3,7 @@
 	"Version": 1,
 	"VersionName": "1.0",
 	"FriendlyName": "InventoryExpansion",
-	"Description": "Integrates a free Fab grid inventory system into lyra",
+	"Description": "Integrates the Narrative inventory/equipment system into Lyra",
 	"Category": "Game Features",
 	"CreatedBy": "AndresAdarve",
 	"CreatedByURL": "",
