@@ -160,6 +160,14 @@ private:
 	void BuildEquippedMap(const ULyraEquipmentManagerComponent* Equipment, TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*>& OutEquipped) const;
 
 	/**
+	 * Gathers every item instance occupying a QuickBar slot. Lyra only spawns a ULyraEquipmentInstance for the
+	 * *active* slot (see ULyraQuickBarComponent::SetActiveSlotIndex), so weapons holstered in non-active slots
+	 * never show up in BuildEquippedMap. From the player's point of view a weapon in a QuickBar slot is equipped
+	 * regardless of which one is currently drawn, so callers OR this set into the equipped-state.
+	 */
+	void BuildQuickBarSet(TSet<ULyraInventoryItemInstance*>& OutItems) const;
+
+	/**
 	 * Reads each entry's private StackCount via UObject reflection over the manager's replicated
 	 * InventoryList UPROPERTY (no Lyra source edit). Degrades gracefully (logs + leaves entries
 	 * unmapped, callers fall back to 1) if Epic ever renames the underlying properties.

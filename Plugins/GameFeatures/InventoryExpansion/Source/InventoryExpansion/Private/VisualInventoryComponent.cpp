@@ -61,6 +61,7 @@ namespace
 		ULyraInventoryItemInstance* Instance,
 		const UInventoryFragment_ItemDisplay* Display,
 		const TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*>& EquippedMap,
+		const TSet<ULyraInventoryItemInstance*>& QuickBarItems,
 		const TMap<ULyraInventoryItemInstance*, int32>& CountMap)
 	{
 		FVisualInventoryItem Row;
@@ -76,8 +77,15 @@ namespace
 
 		if (ULyraEquipmentInstance* const* Equip = EquippedMap.Find(Instance))
 		{
+			// Active weapon / body slot: a live equipment instance is attached to the pawn.
 			Row.bEquipped = true;
 			Row.EquipmentInstance = *Equip;
+		}
+		else if (QuickBarItems.Contains(Instance))
+		{
+			// Holstered weapon: occupies a QuickBar slot but isn't the active one, so it has no equipment
+			// instance yet. It is still considered equipped (it's carried in the loadout).
+			Row.bEquipped = true;
 		}
 
 		return Row;
@@ -217,10 +225,13 @@ FVisualInventoryItem UVisualInventoryComponent::BuildRowForInstance(ULyraInvento
 	TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*> EquippedMap;
 	BuildEquippedMap(Equipment, EquippedMap);
 
+	TSet<ULyraInventoryItemInstance*> QuickBarItems;
+	BuildQuickBarSet(QuickBarItems);
+
 	TMap<ULyraInventoryItemInstance*, int32> CountMap;
 	BuildStackCountMap(Inventory, CountMap);
 
-	return MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, CountMap);
+	return MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, QuickBarItems, CountMap);
 }
 
 TArray<FVisualInventoryItem> UVisualInventoryComponent::GetDisplayItems() const
@@ -234,9 +245,12 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetDisplayItems() const
 		return Results;
 	}
 
-	// Runtime data, gathered once: equipped-state (from equipment) and stack counts (from inventory).
+	// Runtime data, gathered once: equipped-state (from equipment + QuickBar) and stack counts (from inventory).
 	TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*> EquippedMap;
 	BuildEquippedMap(Equipment, EquippedMap);
+
+	TSet<ULyraInventoryItemInstance*> QuickBarItems;
+	BuildQuickBarSet(QuickBarItems);
 
 	TMap<ULyraInventoryItemInstance*, int32> CountMap;
 	BuildStackCountMap(Inventory, CountMap);
@@ -256,7 +270,7 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetDisplayItems() const
 			continue;
 		}
 
-		Results.Add(MakeRow(Instance, Display, EquippedMap, CountMap));
+		Results.Add(MakeRow(Instance, Display, EquippedMap, QuickBarItems, CountMap));
 	}
 
 	return Results;
@@ -330,6 +344,19 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetQuickBarItems() const
 	BuildStackCountMap(Inventory, CountMap);
 
 	const TArray<ULyraInventoryItemInstance*> Slots = QuickBar->GetSlots();
+
+	// Every occupied QuickBar slot counts as equipped, even the non-active ones (which have no equipment
+	// instance yet). MakeRow ORs this set into bEquipped, so all weapon rows read as equipped.
+	TSet<ULyraInventoryItemInstance*> QuickBarItems;
+	QuickBarItems.Reserve(Slots.Num());
+	for (ULyraInventoryItemInstance* Instance : Slots)
+	{
+		if (Instance)
+		{
+			QuickBarItems.Add(Instance);
+		}
+	}
+
 	Results.Reserve(Slots.Num());
 	for (int32 Index = 0; Index < Slots.Num(); ++Index)
 	{
@@ -339,7 +366,7 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetQuickBarItems() const
 			continue; // empty QuickBar slot
 		}
 
-		FVisualInventoryItem Row = MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, CountMap);
+		FVisualInventoryItem Row = MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, QuickBarItems, CountMap);
 		Row.QuickBarSlotIndex = Index;
 		Results.Add(Row);
 	}
@@ -402,6 +429,26 @@ void UVisualInventoryComponent::BuildEquippedMap(const ULyraEquipmentManagerComp
 		if (ULyraInventoryItemInstance* Source = Cast<ULyraInventoryItemInstance>(Equip->GetInstigator()))
 		{
 			OutEquipped.Add(Source, Equip);
+		}
+	}
+}
+
+void UVisualInventoryComponent::BuildQuickBarSet(TSet<ULyraInventoryItemInstance*>& OutItems) const
+{
+	const AController* OwnerController = GetController<AController>();
+	ULyraQuickBarComponent* QuickBar = OwnerController ? OwnerController->FindComponentByClass<ULyraQuickBarComponent>() : nullptr;
+	if (!QuickBar)
+	{
+		return;
+	}
+
+	const TArray<ULyraInventoryItemInstance*> Slots = QuickBar->GetSlots();
+	OutItems.Reserve(Slots.Num());
+	for (ULyraInventoryItemInstance* Instance : Slots)
+	{
+		if (Instance)
+		{
+			OutItems.Add(Instance);
 		}
 	}
 }
