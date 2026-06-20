@@ -43,4 +43,8 @@ namespace InventoryExpansionTags
 	// MovementSpeed: identifies the move-speed attribute; usable as a SetByCaller magnitude tag on
 	// GameplayEffects that buff/slow speed (e.g. GE_SpeedBoost), or just as an organizational marker.
 	INVENTORYEXPANSION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(InventoryGame_Attribute_MovementSpeed);
+	// JumpPower: jump-velocity attribute, buffed by the boots' GE_JumpBoost (same usage as MovementSpeed).
+	INVENTORYEXPANSION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(InventoryGame_Attribute_JumpPower);
+	// Defense: percentage damage-reduction attribute, buffed by the helmet's GE_DefenseBoost.
+	INVENTORYEXPANSION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(InventoryGame_Attribute_Defense);
 }
