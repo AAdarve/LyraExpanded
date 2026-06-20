@@ -3,6 +3,7 @@
 #include "SlottedEquipmentManagerComponent.h"
 
 #include "InventoryExpansionGameplayTags.h"
+#include "InventoryFragment_EquippableTyped.h"
 #include "InventoryFragment_ItemDisplay.h"
 #include "LyraLogChannels.h"
 
@@ -14,7 +15,6 @@
 #include "Equipment/LyraEquipmentDefinition.h"
 #include "Inventory/LyraInventoryItemInstance.h"
 #include "Inventory/LyraInventoryItemDefinition.h"
-#include "Inventory/InventoryFragment_EquippableItem.h"
 
 namespace
 {
@@ -105,11 +105,12 @@ void USlottedEquipmentManagerComponent::EquipToSlot_Authority(ULyraInventoryItem
 		return;
 	}
 
-	// The actual equipment to spawn comes from the standard Lyra equippable fragment.
-	const UInventoryFragment_EquippableItem* Equippable = FindFragment<UInventoryFragment_EquippableItem>(Item);
+	// The equipment to spawn comes from the plugin's typed equippable fragment (cosmetics carry this one;
+	// weapons keep Lyra's UInventoryFragment_EquippableItem and equip through the QuickBar instead).
+	const UInventoryFragment_EquippableTyped* Equippable = FindFragment<UInventoryFragment_EquippableTyped>(Item);
 	if (!Equippable || Equippable->EquipmentDefinition == nullptr)
 	{
-		UE_LOG(LogLyra, Warning, TEXT("SlottedEquipment: item '%s' targets slot '%s' but has no EquippableItem/EquipmentDefinition."),
+		UE_LOG(LogLyra, Warning, TEXT("SlottedEquipment: item '%s' targets slot '%s' but has no EquippableTyped/EquipmentDefinition."),
 			*GetNameSafe(Item), *SlotTag.ToString());
 		return;
 	}

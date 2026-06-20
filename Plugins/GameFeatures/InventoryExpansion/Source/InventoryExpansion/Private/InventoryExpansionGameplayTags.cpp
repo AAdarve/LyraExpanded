@@ -15,4 +15,6 @@ namespace InventoryExpansionTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Equipment_Slot_Weapon_3, "Equipment.Slot.Weapon.3", "Weapon occupant slot 3 (QuickBar index 2).");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Equipment_Message_SlotChanged, "Equipment.Message.SlotChanged", "Broadcast when a body equipment slot is equipped/unequipped.");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(InventoryGame_Attribute_MovementSpeed, "InventoryGame.Attribute.MovementSpeed", "Movement speed attribute of the InventoryGame experience (UInventoryExpansionAttributeSet::MovementSpeed).");
 }

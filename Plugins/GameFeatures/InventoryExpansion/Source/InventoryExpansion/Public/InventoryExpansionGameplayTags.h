@@ -38,4 +38,9 @@ namespace InventoryExpansionTags
 	// GameplayMessageSubsystem channel: a body slot was equipped/unequipped (see FSlottedEquipmentChangedMessage).
 	// Kept outside the Equipment.Slot.* branch so it never pollutes the slot tag picker.
 	INVENTORYEXPANSION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Equipment_Message_SlotChanged);
+
+	// Attributes of the InventoryGame experience (UInventoryExpansionAttributeSet).
+	// MovementSpeed: identifies the move-speed attribute; usable as a SetByCaller magnitude tag on
+	// GameplayEffects that buff/slow speed (e.g. GE_SpeedBoost), or just as an organizational marker.
+	INVENTORYEXPANSION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(InventoryGame_Attribute_MovementSpeed);
 }

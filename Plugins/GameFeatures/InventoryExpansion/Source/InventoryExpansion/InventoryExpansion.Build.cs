@@ -21,6 +21,8 @@ public class InventoryExpansion : ModuleRules
 				"ModularGameplay",
 				// Public because VisualInventoryComponent.h stores an FGameplayMessageListenerHandle by value.
 				"GameplayMessageRuntime",
+				// Public because InventoryExpansionAttributeSet.h (public) includes AbilitySystemComponent.h.
+				"GameplayAbilities",
 			}
 			);
 
@@ -29,7 +31,6 @@ public class InventoryExpansion : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
-				"GameplayAbilities",
 			}
 			);
 	}
