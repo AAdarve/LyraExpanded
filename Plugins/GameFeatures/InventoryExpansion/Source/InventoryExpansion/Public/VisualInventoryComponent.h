@@ -62,7 +62,8 @@ struct FVisualInventoryItem
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory|Display")
 	TSoftObjectPtr<ULyraPickupDefinition> PickupDefinition;
 
-	// QuickBar slot index this row occupies, or -1 if it is not in the QuickBar (only filled by GetQuickBarItems).
+	// QuickBar slot index this row occupies, or -1 if it is not in the QuickBar. Filled on any build path
+	// (GetDisplayItems/GetQuickBarItems/BuildRowForInstance); when set, SlotTag is the matching Equipment.Slot.Weapon.N.
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory|Display")
 	int32 QuickBarSlotIndex = -1;
 };
@@ -177,12 +178,13 @@ private:
 	void BuildEquippedMap(const ULyraEquipmentManagerComponent* Equipment, TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*>& OutEquipped) const;
 
 	/**
-	 * Gathers every item instance occupying a QuickBar slot. Lyra only spawns a ULyraEquipmentInstance for the
-	 * *active* slot (see ULyraQuickBarComponent::SetActiveSlotIndex), so weapons holstered in non-active slots
+	 * Maps every item instance occupying a QuickBar slot to its slot index. Lyra only spawns a ULyraEquipmentInstance
+	 * for the *active* slot (see ULyraQuickBarComponent::SetActiveSlotIndex), so weapons holstered in non-active slots
 	 * never show up in BuildEquippedMap. From the player's point of view a weapon in a QuickBar slot is equipped
-	 * regardless of which one is currently drawn, so callers OR this set into the equipped-state.
+	 * regardless of which one is currently drawn, so callers OR this map into the equipped-state. The index also lets
+	 * any build path stamp the row's QuickBarSlotIndex + weapon SlotTag, not just GetQuickBarItems.
 	 */
-	void BuildQuickBarSet(TSet<ULyraInventoryItemInstance*>& OutItems) const;
+	void BuildQuickBarIndexMap(TMap<ULyraInventoryItemInstance*, int32>& OutItems) const;
 
 	/**
 	 * Reads each entry's private StackCount via UObject reflection over the manager's replicated

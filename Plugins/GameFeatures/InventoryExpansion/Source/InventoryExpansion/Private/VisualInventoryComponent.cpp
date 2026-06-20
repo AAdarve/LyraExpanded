@@ -62,7 +62,7 @@ namespace
 		ULyraInventoryItemInstance* Instance,
 		const UInventoryFragment_ItemDisplay* Display,
 		const TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*>& EquippedMap,
-		const TSet<ULyraInventoryItemInstance*>& QuickBarItems,
+		const TMap<ULyraInventoryItemInstance*, int32>& QuickBarIndexMap,
 		const TMap<ULyraInventoryItemInstance*, int32>& CountMap)
 	{
 		FVisualInventoryItem Row;
@@ -83,11 +83,16 @@ namespace
 			Row.bEquipped = true;
 			Row.EquipmentInstance = *Equip;
 		}
-		else if (QuickBarItems.Contains(Instance))
+
+		// QuickBar occupancy (active or holstered). Weapons are keyed by slot index, not by the display
+		// fragment's EquipmentSlot, so stamp the index + derived Equipment.Slot.Weapon.N tag here. This runs
+		// independently of the equipped block above (an active weapon is in both), so weapon rows are
+		// identifiable through every build path, not just GetQuickBarItems.
+		if (const int32* QbIndex = QuickBarIndexMap.Find(Instance))
 		{
-			// Holstered weapon: occupies a QuickBar slot but isn't the active one, so it has no equipment
-			// instance yet. It is still considered equipped (it's carried in the loadout).
 			Row.bEquipped = true;
+			Row.QuickBarSlotIndex = *QbIndex;
+			Row.SlotTag = UVisualInventoryComponent::WeaponSlotTagForIndex(*QbIndex);
 		}
 
 		return Row;
@@ -227,13 +232,13 @@ FVisualInventoryItem UVisualInventoryComponent::BuildRowForInstance(ULyraInvento
 	TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*> EquippedMap;
 	BuildEquippedMap(Equipment, EquippedMap);
 
-	TSet<ULyraInventoryItemInstance*> QuickBarItems;
-	BuildQuickBarSet(QuickBarItems);
+	TMap<ULyraInventoryItemInstance*, int32> QuickBarIndexMap;
+	BuildQuickBarIndexMap(QuickBarIndexMap);
 
 	TMap<ULyraInventoryItemInstance*, int32> CountMap;
 	BuildStackCountMap(Inventory, CountMap);
 
-	return MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, QuickBarItems, CountMap);
+	return MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, QuickBarIndexMap, CountMap);
 }
 
 TArray<FVisualInventoryItem> UVisualInventoryComponent::GetDisplayItems() const
@@ -251,8 +256,8 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetDisplayItems() const
 	TMap<ULyraInventoryItemInstance*, ULyraEquipmentInstance*> EquippedMap;
 	BuildEquippedMap(Equipment, EquippedMap);
 
-	TSet<ULyraInventoryItemInstance*> QuickBarItems;
-	BuildQuickBarSet(QuickBarItems);
+	TMap<ULyraInventoryItemInstance*, int32> QuickBarIndexMap;
+	BuildQuickBarIndexMap(QuickBarIndexMap);
 
 	TMap<ULyraInventoryItemInstance*, int32> CountMap;
 	BuildStackCountMap(Inventory, CountMap);
@@ -272,7 +277,7 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetDisplayItems() const
 			continue;
 		}
 
-		Results.Add(MakeRow(Instance, Display, EquippedMap, QuickBarItems, CountMap));
+		Results.Add(MakeRow(Instance, Display, EquippedMap, QuickBarIndexMap, CountMap));
 	}
 
 	return Results;
@@ -348,14 +353,14 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetQuickBarItems() const
 	const TArray<ULyraInventoryItemInstance*> Slots = QuickBar->GetSlots();
 
 	// Every occupied QuickBar slot counts as equipped, even the non-active ones (which have no equipment
-	// instance yet). MakeRow ORs this set into bEquipped, so all weapon rows read as equipped.
-	TSet<ULyraInventoryItemInstance*> QuickBarItems;
-	QuickBarItems.Reserve(Slots.Num());
-	for (ULyraInventoryItemInstance* Instance : Slots)
+	// instance yet). MakeRow ORs this map into bEquipped and stamps QuickBarSlotIndex + SlotTag from it.
+	TMap<ULyraInventoryItemInstance*, int32> QuickBarIndexMap;
+	QuickBarIndexMap.Reserve(Slots.Num());
+	for (int32 Index = 0; Index < Slots.Num(); ++Index)
 	{
-		if (Instance)
+		if (Slots[Index])
 		{
-			QuickBarItems.Add(Instance);
+			QuickBarIndexMap.Add(Slots[Index], Index);
 		}
 	}
 
@@ -368,9 +373,8 @@ TArray<FVisualInventoryItem> UVisualInventoryComponent::GetQuickBarItems() const
 			continue; // empty QuickBar slot
 		}
 
-		FVisualInventoryItem Row = MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, QuickBarItems, CountMap);
-		Row.QuickBarSlotIndex = Index;
-		Results.Add(Row);
+		// MakeRow stamps QuickBarSlotIndex + SlotTag from QuickBarIndexMap.
+		Results.Add(MakeRow(Instance, FindDisplayFragment(Instance), EquippedMap, QuickBarIndexMap, CountMap));
 	}
 
 	return Results;
@@ -435,7 +439,7 @@ void UVisualInventoryComponent::BuildEquippedMap(const ULyraEquipmentManagerComp
 	}
 }
 
-void UVisualInventoryComponent::BuildQuickBarSet(TSet<ULyraInventoryItemInstance*>& OutItems) const
+void UVisualInventoryComponent::BuildQuickBarIndexMap(TMap<ULyraInventoryItemInstance*, int32>& OutItems) const
 {
 	const AController* OwnerController = GetController<AController>();
 	ULyraQuickBarComponent* QuickBar = OwnerController ? OwnerController->FindComponentByClass<ULyraQuickBarComponent>() : nullptr;
@@ -446,11 +450,11 @@ void UVisualInventoryComponent::BuildQuickBarSet(TSet<ULyraInventoryItemInstance
 
 	const TArray<ULyraInventoryItemInstance*> Slots = QuickBar->GetSlots();
 	OutItems.Reserve(Slots.Num());
-	for (ULyraInventoryItemInstance* Instance : Slots)
+	for (int32 Index = 0; Index < Slots.Num(); ++Index)
 	{
-		if (Instance)
+		if (Slots[Index])
 		{
-			OutItems.Add(Instance);
+			OutItems.Add(Slots[Index], Index);
 		}
 	}
 }
