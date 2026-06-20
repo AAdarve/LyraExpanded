@@ -98,6 +98,16 @@ public:
 	void RequestEquipToSlot(ULyraInventoryItemInstance* Item) const;
 
 	/**
+	 * Like RequestEquipToSlot, but only equips when the target body slot is FREE: if the slot is already
+	 * occupied, the current occupant is left in place and this is a no-op (the item stays in the inventory,
+	 * where the caller already placed it). Use this for "equip on pickup" so picking up a second item for an
+	 * occupied slot doesn't displace what's worn. The item must already be in the owner's inventory.
+	 * Server-authoritative: safe to call from clients (routes to the server).
+	 */
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment|Slots")
+	void RequestEquipToSlotIfFree(ULyraInventoryItemInstance* Item) const;
+
+	/**
 	 * Unequip whatever occupies the given body slot. The backing item remains in the inventory.
 	 * Server-authoritative: safe to call from clients (routes to the server).
 	 */
@@ -113,8 +123,11 @@ public:
 	bool IsSlotOccupied(FGameplayTag SlotTag) const;
 
 private:
-	/** Authority-side equip/unequip; assumes HasAuthority(). */
-	void EquipToSlot_Authority(ULyraInventoryItemInstance* Item);
+	/**
+	 * Authority-side equip; assumes HasAuthority(). When bOnlyIfSlotFree is true, an already-occupied slot is
+	 * left untouched (no-op) instead of unequipping the current occupant first.
+	 */
+	void EquipToSlot_Authority(ULyraInventoryItemInstance* Item, bool bOnlyIfSlotFree = false);
 	void UnequipSlot_Authority(FGameplayTag SlotTag);
 
 	/** Index into SlottedEquipment for a slot tag (exact match), or INDEX_NONE. */

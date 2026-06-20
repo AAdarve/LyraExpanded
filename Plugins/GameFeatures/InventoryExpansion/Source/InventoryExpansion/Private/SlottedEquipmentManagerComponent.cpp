@@ -77,7 +77,12 @@ void USlottedEquipmentManagerComponent::RequestUnequipSlot_Implementation(FGamep
 	const_cast<USlottedEquipmentManagerComponent*>(this)->UnequipSlot_Authority(SlotTag);
 }
 
-void USlottedEquipmentManagerComponent::EquipToSlot_Authority(ULyraInventoryItemInstance* Item)
+void USlottedEquipmentManagerComponent::RequestEquipToSlotIfFree_Implementation(ULyraInventoryItemInstance* Item) const
+{
+	const_cast<USlottedEquipmentManagerComponent*>(this)->EquipToSlot_Authority(Item, /*bOnlyIfSlotFree=*/true);
+}
+
+void USlottedEquipmentManagerComponent::EquipToSlot_Authority(ULyraInventoryItemInstance* Item, bool bOnlyIfSlotFree)
 {
 	const AActor* Owner = GetOwner();
 	if (!Item || !Owner || !Owner->HasAuthority())
@@ -112,6 +117,12 @@ void USlottedEquipmentManagerComponent::EquipToSlot_Authority(ULyraInventoryItem
 	{
 		UE_LOG(LogLyra, Warning, TEXT("SlottedEquipment: item '%s' targets slot '%s' but has no EquippableTyped/EquipmentDefinition."),
 			*GetNameSafe(Item), *SlotTag.ToString());
+		return;
+	}
+
+	// "Equip only if free" mode (e.g. equip-on-pickup): leave an occupied slot untouched and bail out.
+	if (bOnlyIfSlotFree && IsSlotOccupied(SlotTag))
+	{
 		return;
 	}
 
